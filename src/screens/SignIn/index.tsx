@@ -1,12 +1,20 @@
-import { StatusBar } from "expo-status-bar";
-import { styles } from "./styles";
-import { Text, View } from "react-native";
+import { Container, Title, Slogan } from './styles';
 
-export default function SignIn() {
+import backgroundImg from '../../assets/background.png'
+import { Button } from '../../components/Button';
+
+export function SignIn() {
   return (
-    <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <Container source={backgroundImg}>
+      <Title>Ignite Fleet</Title>
+
+      <Slogan>
+        Gestão de uso de veículos
+      </Slogan>
+
+      <Button title='Entrar com Google' />
+
+      <Button title='Entrar com Facebook'  style={{marginTop: 20}}/>
+    </Container>
   );
 }
