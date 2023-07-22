@@ -1,3 +1,5 @@
+import 'react-native-get-random-values'
+import React from "react";
 import { ThemeProvider } from "styled-components/native";
 import {
   useFonts,
@@ -7,6 +9,7 @@ import {
 
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AppProvider, UserProvider } from "@realm/react";
+import { RealmProvider } from "./src/lib/realm/index";
 
 import { REALM_APP_ID } from "@env";
 import theme from "./src/theme";
@@ -29,14 +32,16 @@ export default function App() {
   return (
     <AppProvider id={REALM_APP_ID}>
       <ThemeProvider theme={theme}>
-        <SafeAreaProvider>
+        <SafeAreaProvider style={{flex: 1, backgroundColor: theme.COLORS.GRAY_800}}>
           <StatusBar
             barStyle="light-content"
             backgroundColor="transparent"
             translucent
           />
           <UserProvider fallback={SignIn}>
-            <Routes />
+            <RealmProvider>
+              <Routes />
+            </RealmProvider>
           </UserProvider>
         </SafeAreaProvider>
       </ThemeProvider>

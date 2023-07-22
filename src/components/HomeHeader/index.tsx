@@ -1,3 +1,4 @@
+import React from "react";
 import { TouchableOpacity } from "react-native";
 import { Power } from "phosphor-react-native";
 import { useUser, useApp } from "@realm/react";
