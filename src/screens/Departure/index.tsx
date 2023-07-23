@@ -1,113 +1,99 @@
-import React, { useRef, useState } from "react";
+import React from 'react';
+import { useRef, useState } from 'react';
+import { TextInput, ScrollView, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 
-import { useRealm } from "../../lib/realm";
-import { useUser } from "@realm/react";
+import { useNavigation } from '@react-navigation/native';
+import { useUser } from '@realm/react';
 
-import { Container, Content } from "./styles";
-import { Header } from "../../components/Header";
-import { LicensePlateInput } from "../../components/LicencePlateInput";
-import { TextAreaInput } from "../../components/TextAreaInput";
-import { Button } from "../../components/Button";
-import {
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  TextInput,
-} from "react-native";
-import { LicensePlateValidation } from "../../utils/licensePlateValidate";
-import { Historic } from "../../lib/realm/schemas/History";
-import { useNavigation } from "@react-navigation/native";
+import { useRealm } from '../../lib/realm';
+import { Historic } from '../../lib/realm/schemas/History';
+
+import { Button } from '../../components/Button';
+import { Header } from '../../components/Header';
+import { LicensePlateInput } from '../../components/LicencePlateInput';
+import { TextAreaInput } from '../../components/TextAreaInput';
+
+import { Container, Content } from './styles';
+import { licensePlateValidate } from '../../utils/licensePlateValidate';
+
+const keyboardAvoidingViewBehavior = Platform.OS === 'android' ? 'height' : 'position';
 
 export function Departure() {
-  const [description, setDescription] = useState("");
-  const [licensePlate, setLicensePlate] = useState("");
-  const [isRegistering, setIsRegistering] = useState(false);
+
+  const [description, setDescription] = useState('');
+  const [licensePlate, setLicensePlate] = useState('');
+  const [isRegistering, setIsResgistering] = useState(false);
 
   const realm = useRealm();
   const user = useUser();
-
   const { goBack } = useNavigation();
-
-  const keyboardAvoidingViewBehavior =
-    Platform.OS === "android" ? "height" : "position";
 
   const descriptionRef = useRef<TextInput>(null);
   const licensePlateRef = useRef<TextInput>(null);
 
   function handleDepartureRegister() {
     try {
-      if (!LicensePlateValidation(licensePlate)) {
+      if(!licensePlateValidate(licensePlate)) {
         licensePlateRef.current?.focus();
-        return Alert.alert(
-          "Placa Inválida",
-          "A placa é invalida. Por favor, informe uma placa correta de veículo"
-        );
+        return Alert.alert('Placa inválida', 'A placa é inválida. Por favor, informa a placa correta.')
       }
-
-      if (description.trim().length === 0) {
+  
+      if(description.trim().length === 0) {
         descriptionRef.current?.focus();
-        return Alert.alert(
-          "Finalidade",
-          "Por favor, informe a finalidade de utilização do veículo"
-        );
+        return Alert.alert('Finalidade', 'Por favor, informe a finalidade da utilização do veículo')
       }
 
-      setIsRegistering(true);
+      setIsResgistering(false);
 
       realm.write(() => {
-        realm.create(
-          "History",
-          Historic.generate({
-            description,
-            license_plate: licensePlate.toUpperCase(),
-            user_id: user!.id,
-          })
-        );
+        realm.create('Historic', Historic.generate({
+          user_id: user!.id,
+          license_plate: licensePlate,
+          description,
+        }))
       });
+
+      Alert.alert('Saída', 'Saída do veículo registrada com sucesso.');
 
       goBack();
 
-      Alert.alert("Saída", "Saída do Veículo registrada com sucesso");
-    } catch (error) {
+    } catch (error) {;
       console.log(error);
-      Alert.alert("Error", "Não foi possivel registrar a saída do veiculo.");
-
-      setIsRegistering(false);
+      Alert.alert('Erro', 'Não possível registrar a saída do veículo.');
+      setIsResgistering(false)
     }
   }
 
   return (
     <Container>
-      <Header title="Saída" />
+      <Header title='Saída' />
 
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={keyboardAvoidingViewBehavior}
-      >
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={keyboardAvoidingViewBehavior} >
         <ScrollView>
           <Content>
             <LicensePlateInput
               ref={licensePlateRef}
-              label="Placa do Veículo"
-              placeholder="BRA4686"
-              onSubmitEditing={() => descriptionRef.current?.focus}
-              returnKeyType="next"
+              label='Placa do veículo'
+              placeholder="BRA1234"
+              onSubmitEditing={() => {
+                descriptionRef.current?.focus()
+              }}
+              returnKeyType='next'
               onChangeText={setLicensePlate}
             />
 
             <TextAreaInput
               ref={descriptionRef}
-              label="Finalidade"
-              placeholder="Vou utilizar esse veículo para..."
+              label='Finalizade'
+              placeholder='Vou utilizar o veículo para...'
               onSubmitEditing={handleDepartureRegister}
+              returnKeyType='send'
               blurOnSubmit
-              returnKeyType="send"
               onChangeText={setDescription}
             />
 
-            <Button
-              title="Registrar saída"
+            <Button 
+              title='Registar Saída'
               onPress={handleDepartureRegister}
               isLoading={isRegistering}
             />
