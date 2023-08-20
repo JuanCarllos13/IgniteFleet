@@ -1,4 +1,6 @@
-import 'react-native-get-random-values'
+import "react-native-get-random-values";
+import "./src/lib/dayjs";
+
 import React from "react";
 import { ThemeProvider } from "styled-components/native";
 import {
@@ -9,7 +11,7 @@ import {
 
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AppProvider, UserProvider } from "@realm/react";
-import { RealmProvider } from "./src/lib/realm/index";
+import { RealmProvider, syncConfig } from "./src/lib/realm/index";
 
 import { REALM_APP_ID } from "@env";
 import theme from "./src/theme";
@@ -18,12 +20,16 @@ import { SignIn } from "./src/screens/SignIn";
 import { Loading } from "./src/components/Loading";
 import { StatusBar } from "react-native";
 import { Routes } from "./src/routes";
+import { TopMessage } from "./src/components/TopMessage";
+import { WifiSlash } from "phosphor-react-native";
+import { useNetInfo } from "@react-native-community/netinfo";
 
 export default function App() {
   const [fontsLoaded] = useFonts({
     Roboto_400Regular,
     Roboto_700Bold,
   });
+  const netInfo = useNetInfo();
 
   if (!fontsLoaded) {
     return <Loading />;
@@ -32,14 +38,21 @@ export default function App() {
   return (
     <AppProvider id={REALM_APP_ID}>
       <ThemeProvider theme={theme}>
-        <SafeAreaProvider style={{flex: 1, backgroundColor: theme.COLORS.GRAY_800}}>
+        <SafeAreaProvider
+          style={{ flex: 1, backgroundColor: theme.COLORS.GRAY_800 }}
+        >
           <StatusBar
             barStyle="light-content"
             backgroundColor="transparent"
             translucent
           />
+
+          {!netInfo.isConnected && (
+            <TopMessage title="Você está off-line." icon={WifiSlash} />
+          )}
+
           <UserProvider fallback={SignIn}>
-            <RealmProvider>
+            <RealmProvider sync={syncConfig} fallback={Loading}>
               <Routes />
             </RealmProvider>
           </UserProvider>
