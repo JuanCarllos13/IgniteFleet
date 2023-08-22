@@ -19,21 +19,19 @@ export const Label = styled.Text`
   margin-bottom: 5px;
 `;
 
-export const LicensePlate = styled.Text` 
+export const LicensePlate = styled.Text`
   color: ${({ theme }) => theme.COLORS.GRAY_100};
   font-size: ${({ theme }) => theme.FONT_SIZE.XXL}px;
   font-family: ${({ theme }) => theme.FONT_FAMILY.BOLD};
-`
+`;
 
-
-export const Description = styled.Text` 
+export const Description = styled.Text`
   color: ${({ theme }) => theme.COLORS.GRAY_100};
   font-size: ${({ theme }) => theme.FONT_SIZE.MD}px;
   font-family: ${({ theme }) => theme.FONT_FAMILY.REGULAR};
 
   text-align: justify;
-`
-
+`;
 
 export const Footer = styled.View`
   width: 100%;
@@ -41,7 +39,14 @@ export const Footer = styled.View`
   gap: 16px;
   margin-top: 32px;
   padding: 32px;
-  
+`;
 
+export const AsyncMessage = styled.Text`
+  color: ${({ theme }) => theme.COLORS.GRAY_300};
+  font-size: ${({ theme }) => theme.FONT_SIZE.SM}px;
+  font-family: ${({ theme }) => theme.FONT_FAMILY.REGULAR};
 
-`
+  text-align: center;
+  flex: 1;
+  margin: 32px;
+`;

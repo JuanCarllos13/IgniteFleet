@@ -1,21 +1,30 @@
-import React, { useEffect, useState } from 'react';
-import { Alert, FlatList } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import dayjs from 'dayjs';
+import React, { useEffect, useState } from "react";
+import { Alert, FlatList } from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import dayjs from "dayjs";
 
-import { useUser } from '@realm/react';
-import { useQuery, useRealm } from '../../lib/realm';
-import { Historic } from '../../lib/realm/schemas/History';
-import { getLastAsyncTimestamp, saveLastSyncTimestamp } from '../../lib/ayncStorage/syncStorage';
+import { useUser } from "@realm/react";
+import { useQuery, useRealm } from "../../lib/realm";
+import { Historic } from "../../lib/realm/schemas/History";
+import {
+  getLastAsyncTimestamp,
+  saveLastSyncTimestamp,
+} from "../../lib/ayncStorage/syncStorage";
 
-import { HomeHeader } from '../../components/HomeHeader';
-import { CarStatus } from '../../components/CarStatus';
-import { HistoricCard, HistoricCardProps } from '../../components/HistoricCard';
-import { Container, Content, Label, Title } from './styles';
+import { HomeHeader } from "../../components/HomeHeader";
+import { CarStatus } from "../../components/CarStatus";
+import { HistoricCard, HistoricCardProps } from "../../components/HistoricCard";
+import { Container, Content, Label, Title } from "./styles";
+import Toast from "react-native-toast-message";
+import { TopMessage } from "../../components/TopMessage";
+import { CloudArrowUp } from "phosphor-react-native";
 
 export function Home() {
   const [vehicleInUse, setVehicleInUse] = useState<Historic | null>(null);
-  const [vehicleHistoric, setVehicleHistoric] = useState<HistoricCardProps[]>([]);
+  const [percentage, setPercentage] = useState<string | null>(null);
+  const [vehicleHistoric, setVehicleHistoric] = useState<HistoricCardProps[]>(
+    []
+  );
 
   const { navigate } = useNavigation();
 
@@ -24,10 +33,10 @@ export function Home() {
   const realm = useRealm();
 
   function handleRegisterMovement() {
-    if(vehicleInUse?._id) {
-      navigate('arrival', { id: vehicleInUse._id.toString() });
+    if (vehicleInUse?._id) {
+      navigate("arrival", { id: vehicleInUse._id.toString() });
     } else {
-      navigate('departure')
+      navigate("departure");
     }
   }
 
@@ -36,74 +45,92 @@ export function Home() {
       const vehicle = historic.filtered("status='departure'")[0];
       setVehicleInUse(vehicle);
     } catch (error) {
-      Alert.alert('Veículo em uso', 'Não foi possível carregar o veículo em uso.');
+      Alert.alert(
+        "Veículo em uso",
+        "Não foi possível carregar o veículo em uso."
+      );
       console.log(error);
     }
   }
 
   async function fetchHistoric() {
     try {
-      const response = historic.filtered("status='arrival' SORT(created_at DESC)");
+      const response = historic.filtered(
+        "status='arrival' SORT(created_at DESC)"
+      );
 
       const lastSync = await getLastAsyncTimestamp();
 
       const formattedHistoric = response.map((item) => {
-        return ({
+        return {
           id: item._id.toString(),
           licensePlate: item.license_plate,
           isSync: lastSync > item.updated_at!.getTime(),
-          created: dayjs(item.created_at).format('[Saída em] DD/MM/YYYY [às] HH:mm')
-        })
-      })
+          created: dayjs(item.created_at).format(
+            "[Saída em] DD/MM/YYYY [às] HH:mm"
+          ),
+        };
+      });
       setVehicleHistoric(formattedHistoric);
     } catch (error) {
       console.log(error);
-      Alert.alert('Histórico', 'Não foi possível carregar o histórico.')
+      Alert.alert("Histórico", "Não foi possível carregar o histórico.");
     }
   }
 
   function handleHistoricDetails(id: string) {
-    navigate('arrival', { id })
+    navigate("arrival", { id });
   }
 
-  async function progressNotification(transferred: number, transferable: number) {
-    const percentage = (transferred/transferable) * 100;
+  async function progressNotification(
+    transferred: number,
+    transferable: number
+  ) {
+    const percentage = (transferred / transferable) * 100;
 
-    if(percentage === 100) {
+    if (percentage === 100) {
       await saveLastSyncTimestamp();
       await fetchHistoric();
+      setPercentage(null)
+      Toast.show({ type: "info", text1: "Todos os dados estão sincronizado" });
+    }
+
+    if (percentage < 100) {
+      setPercentage(`${percentage.toFixed(0)}% sincronizado...`);
     }
   }
 
   useEffect(() => {
     fetchVehicleInUse();
-  },[])
+  }, []);
 
   useEffect(() => {
-    realm.addListener('change', () => fetchVehicleInUse())
+    realm.addListener("change", () => fetchVehicleInUse());
     return () => {
-      if(realm && !realm.isClosed) {
-        realm.removeListener('change', fetchVehicleInUse)
+      if (realm && !realm.isClosed) {
+        realm.removeListener("change", fetchVehicleInUse);
       }
     };
-  },[])
+  }, []);
 
   useEffect(() => {
     fetchHistoric();
-  },[historic]);
+  }, [historic]);
 
   useEffect(() => {
     realm.subscriptions.update((mutableSubs, realm) => {
-      const historicByUserQuery = realm.objects('Historic').filtered(`user_id = '${user!.id}'`);
+      const historicByUserQuery = realm
+        .objects("Historic")
+        .filtered(`user_id = '${user!.id}'`);
 
-      mutableSubs.add(historicByUserQuery, { name: 'hostoric_by_user' });
-    })
-  },[realm]);
+      mutableSubs.add(historicByUserQuery, { name: "hostoric_by_user" });
+    });
+  }, [realm]);
 
   useEffect(() => {
     const syncSession = realm.syncSession;
 
-    if(!syncSession) {
+    if (!syncSession) {
       return;
     }
 
@@ -111,43 +138,38 @@ export function Home() {
       Realm.ProgressDirection.Upload,
       Realm.ProgressMode.ReportIndefinitely,
       progressNotification
-    )
+    );
 
     return () => {
       syncSession.removeProgressNotification(progressNotification);
-    }
-  },[]);
+    };
+  }, []);
 
   return (
     <Container>
+      {percentage && <TopMessage title={percentage} icon={CloudArrowUp} />}
       <HomeHeader />
 
       <Content>
-        <CarStatus 
+        <CarStatus
           licensePlate={vehicleInUse?.license_plate}
-          onPress={handleRegisterMovement} 
+          onPress={handleRegisterMovement}
         />
 
-        <Title>
-          Histórico
-        </Title>
+        <Title>Histórico</Title>
 
-        <FlatList 
+        <FlatList
           data={vehicleHistoric}
-          keyExtractor={item => item.id}
+          keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <HistoricCard 
-              data={item} 
+            <HistoricCard
+              data={item}
               onPress={() => handleHistoricDetails(item.id)}
             />
           )}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 100 }}
-          ListEmptyComponent={(
-            <Label>
-              Nenhum registro de utilização.
-            </Label>
-          )}
+          ListEmptyComponent={<Label>Nenhum registro de utilização.</Label>}
         />
       </Content>
     </Container>
