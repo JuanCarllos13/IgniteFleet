@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { TextInput, ScrollView, Alert } from "react-native";
 
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
+import MapView from "react-native-maps";
 
 import { useNavigation } from "@react-navigation/native";
 import { useUser } from "@realm/react";
@@ -10,6 +11,7 @@ import {
   watchPositionAsync,
   LocationAccuracy,
   LocationSubscription,
+  LocationObjectCoords,
 } from "expo-location";
 
 import { useRealm } from "../../lib/realm";
@@ -27,6 +29,7 @@ import { Container, Content, Message } from "./styles";
 import { Loading } from "../../components/Loading";
 import { LocationInfo } from "../../components/Location";
 import { Car } from "phosphor-react-native";
+import { Map } from "../../components/Map";
 
 export function Departure() {
   const [description, setDescription] = useState("");
@@ -34,6 +37,7 @@ export function Departure() {
   const [isRegistering, setIsRegistering] = useState(false);
   const [isLoadingLocation, setIsLoadingLocation] = useState(true);
   const [currentLocation, setCurrentLocation] = useState<string | null>(null);
+  const [location, setLocation] = useState<LocationObjectCoords | null>(null);
 
   const [locationForegroundPermission, requestLocationForegroundPermission] =
     useForegroundPermissions();
@@ -103,6 +107,7 @@ export function Departure() {
         timeInterval: 1000,
       },
       (location) => {
+        setLocation(location.coords);
         getAddressLocation(location.coords)
           .then((address) => {
             if (address) {
@@ -143,6 +148,7 @@ export function Departure() {
 
       <KeyboardAwareScrollView extraHeight={100}>
         <ScrollView>
+          {location && <Map coordinates={[location]} />}
           <Content>
             {currentLocation && (
               <LocationInfo
