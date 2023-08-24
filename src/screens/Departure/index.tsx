@@ -1,15 +1,16 @@
-import React from "react";
-import { useRef, useState } from "react";
-import {
-  TextInput,
-  ScrollView,
-  Alert,
-} from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { TextInput, ScrollView, Alert } from "react-native";
 
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 
 import { useNavigation } from "@react-navigation/native";
 import { useUser } from "@realm/react";
+import {
+  useForegroundPermissions,
+  watchPositionAsync,
+  LocationAccuracy,
+  LocationSubscription,
+} from "expo-location";
 
 import { useRealm } from "../../lib/realm";
 import { Historic } from "../../lib/realm/schemas/History";
@@ -19,13 +20,23 @@ import { Header } from "../../components/Header";
 import { LicensePlateInput } from "../../components/LicencePlateInput";
 import { TextAreaInput } from "../../components/TextAreaInput";
 
-import { Container, Content } from "./styles";
 import { licensePlateValidate } from "../../utils/licensePlateValidate";
+import { getAddressLocation } from "../../utils/getAddressLocation";
+
+import { Container, Content, Message } from "./styles";
+import { Loading } from "../../components/Loading";
+import { LocationInfo } from "../../components/Location";
+import { Car } from "phosphor-react-native";
 
 export function Departure() {
   const [description, setDescription] = useState("");
   const [licensePlate, setLicensePlate] = useState("");
-  const [isRegistering, setIsResgistering] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [isLoadingLocation, setIsLoadingLocation] = useState(true);
+  const [currentLocation, setCurrentLocation] = useState<string | null>(null);
+
+  const [locationForegroundPermission, requestLocationForegroundPermission] =
+    useForegroundPermissions();
 
   const realm = useRealm();
   const user = useUser();
@@ -52,7 +63,7 @@ export function Departure() {
         );
       }
 
-      setIsResgistering(false);
+      setIsRegistering(false);
 
       realm.write(() => {
         realm.create(
@@ -71,8 +82,59 @@ export function Departure() {
     } catch (error) {
       console.log(error);
       Alert.alert("Erro", "Não possível registrar a saída do veículo.");
-      setIsResgistering(false);
+      setIsRegistering(false);
     }
+  }
+
+  useEffect(() => {
+    requestLocationForegroundPermission();
+  }, []);
+
+  useEffect(() => {
+    if (!locationForegroundPermission?.granted) {
+      return;
+    }
+
+    let subscription: LocationSubscription;
+
+    watchPositionAsync(
+      {
+        accuracy: LocationAccuracy.High,
+        timeInterval: 1000,
+      },
+      (location) => {
+        getAddressLocation(location.coords)
+          .then((address) => {
+            if (address) {
+              setCurrentLocation(address);
+            }
+          })
+          .finally(() => setIsLoadingLocation(false));
+      }
+    ).then((response) => (subscription = response));
+
+    return () => {
+      if (subscription) {
+        subscription.remove();
+      }
+    };
+  }, [locationForegroundPermission?.granted]);
+
+  if (!locationForegroundPermission?.granted) {
+    return (
+      <Container>
+        <Header title="Saída" />
+        <Message>
+          Você precisa permitir que o aplicativo tenha acesso a localização para
+          acessar essa funcionalidade. Por favor, acesse as configurações do seu
+          dispositivo para conceder a permissão ao aplicativo.
+        </Message>
+      </Container>
+    );
+  }
+
+  if (isLoadingLocation) {
+    return <Loading />;
   }
 
   return (
@@ -82,6 +144,14 @@ export function Departure() {
       <KeyboardAwareScrollView extraHeight={100}>
         <ScrollView>
           <Content>
+            {currentLocation && (
+              <LocationInfo
+                label="Localization atual"
+                description={currentLocation}
+                icon={Car}
+              />
+            )}
+
             <LicensePlateInput
               ref={licensePlateRef}
               label="Placa do veículo"
@@ -95,7 +165,7 @@ export function Departure() {
 
             <TextAreaInput
               ref={descriptionRef}
-              label="Finalizada"
+              label="Finalizade"
               placeholder="Vou utilizar o veículo para..."
               onSubmitEditing={handleDepartureRegister}
               returnKeyType="send"
