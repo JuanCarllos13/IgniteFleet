@@ -2,11 +2,11 @@ import React, { useEffect, useRef, useState } from "react";
 import { TextInput, ScrollView, Alert } from "react-native";
 
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
-import MapView from "react-native-maps";
 
 import { useNavigation } from "@react-navigation/native";
 import { useUser } from "@realm/react";
 import {
+  requestBackgroundPermissionsAsync,
   useForegroundPermissions,
   watchPositionAsync,
   LocationAccuracy,
@@ -30,6 +30,7 @@ import { Loading } from "../../components/Loading";
 import { LocationInfo } from "../../components/Location";
 import { Car } from "phosphor-react-native";
 import { Map } from "../../components/Map";
+import { startLocationTask } from "../../tasks/backgroundLocationtask";
 
 export function Departure() {
   const [description, setDescription] = useState("");
@@ -49,7 +50,7 @@ export function Departure() {
   const descriptionRef = useRef<TextInput>(null);
   const licensePlateRef = useRef<TextInput>(null);
 
-  function handleDepartureRegister() {
+  async function handleDepartureRegister() {
     try {
       if (!licensePlateValidate(licensePlate)) {
         licensePlateRef.current?.focus();
@@ -67,7 +68,26 @@ export function Departure() {
         );
       }
 
-      setIsRegistering(false);
+      if (!location?.latitude && !location?.longitude) {
+        return Alert.alert(
+          "Localização",
+          "Não foi possível obter a localização atual. Tente novamente"
+        );
+      }
+
+      setIsRegistering(true);
+
+      const backGroundPermissions = await requestBackgroundPermissionsAsync();
+
+      if (!backGroundPermissions.granted) {
+        setIsRegistering(false);
+        return Alert.alert(
+          "Localização",
+          "É necessário que o App tenha permissão para acessar a localização em segundo plano"
+        );
+      }
+      await startLocationTask()
+
 
       realm.write(() => {
         realm.create(
@@ -171,7 +191,7 @@ export function Departure() {
 
             <TextAreaInput
               ref={descriptionRef}
-              label="Finalizade"
+              label="Finalidade"
               placeholder="Vou utilizar o veículo para..."
               onSubmitEditing={handleDepartureRegister}
               returnKeyType="send"
