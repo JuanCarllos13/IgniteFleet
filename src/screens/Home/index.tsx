@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { Alert, FlatList } from "react-native";
 import { useNavigation } from "@react-navigation/native";
+import Toast from "react-native-toast-message";
+import { CloudArrowUp } from "phosphor-react-native";
 import dayjs from "dayjs";
 
 import { useUser } from "@realm/react";
@@ -14,17 +16,16 @@ import {
 import { HomeHeader } from "../../components/HomeHeader";
 import { CarStatus } from "../../components/CarStatus";
 import { HistoricCard, HistoricCardProps } from "../../components/HistoricCard";
+
 import { Container, Content, Label, Title } from "./styles";
-import Toast from "react-native-toast-message";
 import { TopMessage } from "../../components/TopMessage";
-import { CloudArrowUp } from "phosphor-react-native";
 
 export function Home() {
   const [vehicleInUse, setVehicleInUse] = useState<Historic | null>(null);
-  const [percentage, setPercentage] = useState<string | null>(null);
   const [vehicleHistoric, setVehicleHistoric] = useState<HistoricCardProps[]>(
     []
   );
+  const [percentageToSync, setPercentageToSync] = useState<string | null>(null);
 
   const { navigate } = useNavigation();
 
@@ -91,12 +92,16 @@ export function Home() {
     if (percentage === 100) {
       await saveLastSyncTimestamp();
       await fetchHistoric();
-      setPercentage(null)
-      Toast.show({ type: "info", text1: "Todos os dados estão sincronizado" });
+      setPercentageToSync(null);
+
+      Toast.show({
+        type: "info",
+        text1: "Todos os dados estão sincronizado.",
+      });
     }
 
     if (percentage < 100) {
-      setPercentage(`${percentage.toFixed(0)}% sincronizado...`);
+      setPercentageToSync(`${percentage.toFixed(0)}% sincronizado.`);
     }
   }
 
@@ -147,7 +152,10 @@ export function Home() {
 
   return (
     <Container>
-      {percentage && <TopMessage title={percentage} icon={CloudArrowUp} />}
+      {percentageToSync && (
+        <TopMessage title={percentageToSync} icon={CloudArrowUp} />
+      )}
+
       <HomeHeader />
 
       <Content>

@@ -1,13 +1,14 @@
 import React, { useEffect, useRef, useState } from "react";
 import { TextInput, ScrollView, Alert } from "react-native";
 
+import { CarSimple } from "phosphor-react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 
 import { useNavigation } from "@react-navigation/native";
 import { useUser } from "@realm/react";
 import {
-  requestBackgroundPermissionsAsync,
   useForegroundPermissions,
+  requestBackgroundPermissionsAsync,
   watchPositionAsync,
   LocationAccuracy,
   LocationSubscription,
@@ -21,24 +22,25 @@ import { Button } from "../../components/Button";
 import { Header } from "../../components/Header";
 import { LicensePlateInput } from "../../components/LicencePlateInput";
 import { TextAreaInput } from "../../components/TextAreaInput";
+import { Loading } from "../../components/Loading";
+import { LocationInfo } from "../../components/LocationInfo";
+import { Map } from "../../components/Map";
 
 import { licensePlateValidate } from "../../utils/licensePlateValidate";
 import { getAddressLocation } from "../../utils/getAddressLocation";
-
-import { Container, Content, Message } from "./styles";
-import { Loading } from "../../components/Loading";
-import { LocationInfo } from "../../components/Location";
-import { Car } from "phosphor-react-native";
-import { Map } from "../../components/Map";
 import { startLocationTask } from "../../tasks/backgroundLocationtask";
+
+import { Container, Content, Message, MessageContent } from "./styles";
+import { OpenSettings } from "../../utils/openSettings";
 
 export function Departure() {
   const [description, setDescription] = useState("");
   const [licensePlate, setLicensePlate] = useState("");
   const [isRegistering, setIsRegistering] = useState(false);
   const [isLoadingLocation, setIsLoadingLocation] = useState(true);
-  const [currentLocation, setCurrentLocation] = useState<string | null>(null);
-  const [location, setLocation] = useState<LocationObjectCoords | null>(null);
+  const [currentAddress, setCurrentAddress] = useState<string | null>(null);
+  const [currentCoords, setCurrentCoords] =
+    useState<LocationObjectCoords | null>(null);
 
   const [locationForegroundPermission, requestLocationForegroundPermission] =
     useForegroundPermissions();
@@ -68,26 +70,30 @@ export function Departure() {
         );
       }
 
-      if (!location?.latitude && !location?.longitude) {
+      if (!currentCoords?.latitude && !currentCoords?.longitude) {
         return Alert.alert(
           "Localização",
-          "Não foi possível obter a localização atual. Tente novamente"
+          "Não foi possível obter a localização atual. Tente novamente.",
+          
         );
       }
 
       setIsRegistering(true);
 
-      const backGroundPermissions = await requestBackgroundPermissionsAsync();
+      const backgroundPermissions = await requestBackgroundPermissionsAsync();
 
-      if (!backGroundPermissions.granted) {
+      if (!backgroundPermissions.granted) {
         setIsRegistering(false);
         return Alert.alert(
           "Localização",
-          "É necessário que o App tenha permissão para acessar a localização em segundo plano"
+          'É necessário permitir que o App tenha acesso localização em segundo plano. Acesse as configurações do dispositivo e habilite "Permitir o tempo todo."',
+          [
+            {text: "Abrir configuração", onPress: OpenSettings}
+          ]
         );
       }
-      await startLocationTask()
 
+      await startLocationTask();
 
       realm.write(() => {
         realm.create(
@@ -96,6 +102,13 @@ export function Departure() {
             user_id: user!.id,
             license_plate: licensePlate,
             description,
+            coords: [
+              {
+                latitude: currentCoords.latitude,
+                longitude: currentCoords.longitude,
+                timestamp: new Date().getTime(),
+              },
+            ],
           })
         );
       });
@@ -127,11 +140,12 @@ export function Departure() {
         timeInterval: 1000,
       },
       (location) => {
-        setLocation(location.coords);
+        setCurrentCoords(location.coords);
+
         getAddressLocation(location.coords)
           .then((address) => {
             if (address) {
-              setCurrentLocation(address);
+              setCurrentAddress(address);
             }
           })
           .finally(() => setIsLoadingLocation(false));
@@ -149,11 +163,15 @@ export function Departure() {
     return (
       <Container>
         <Header title="Saída" />
-        <Message>
-          Você precisa permitir que o aplicativo tenha acesso a localização para
-          acessar essa funcionalidade. Por favor, acesse as configurações do seu
-          dispositivo para conceder a permissão ao aplicativo.
-        </Message>
+        <MessageContent>
+          <Message>
+            Você precisa permitir que o aplicativo tenha acesso a localização
+            para acessar essa funcionalidade. Por favor, acesse as configurações
+            do seu dispositivo para conceder a permissão ao aplicativo.
+          </Message>
+
+          <Button title="Abrir configurações" onPress={OpenSettings} />
+        </MessageContent>
       </Container>
     );
   }
@@ -168,13 +186,14 @@ export function Departure() {
 
       <KeyboardAwareScrollView extraHeight={100}>
         <ScrollView>
-          {location && <Map coordinates={[location]} />}
+          {currentCoords && <Map coordinates={[currentCoords]} />}
+
           <Content>
-            {currentLocation && (
+            {currentAddress && (
               <LocationInfo
-                label="Localization atual"
-                description={currentLocation}
-                icon={Car}
+                icon={CarSimple}
+                label="Localização atual"
+                description={currentAddress}
               />
             )}
 
@@ -191,7 +210,7 @@ export function Departure() {
 
             <TextAreaInput
               ref={descriptionRef}
-              label="Finalidade"
+              label="Finalizade"
               placeholder="Vou utilizar o veículo para..."
               onSubmitEditing={handleDepartureRegister}
               returnKeyType="send"
